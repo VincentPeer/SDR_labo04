@@ -11,13 +11,13 @@ const (
 
 // server represents a UDP server that listens for incoming messages and processes them.
 type server struct {
-	udp                *udpserver.UDP                      			// udp is a pointer to the UDP connection of the server.
-	onMessage          func(Message)			// onMessage is a callback function that is called when a message is received.
-	onSend			 func(Message)			// onSend is a callback function that is called when a message is sent.
-	onError            func(error)                         			// onError is a callback function that is called when an error occurs.
-	config             *networkConfig                      			// config is a pointer to the network configuration.
-	configID		   int                                 			// configID is the ID of the server in the network configuration.
-	debug 			bool                                			// debug is true if debug messages should be printed and messages slow down
+	udp       *udpserver.UDP // udp is a pointer to the UDP connection of the server.
+	onMessage func(Message)  // onMessage is a callback function that is called when a message is received.
+	onSend    func(Message)  // onSend is a callback function that is called when a message is sent.
+	onError   func(error)    // onError is a callback function that is called when an error occurs.
+	config    *networkConfig // config is a pointer to the network configuration.
+	configID  int            // configID is the ID of the server in the network configuration.
+	debug     bool           // debug is true if debug messages should be printed and messages slow down
 }
 
 // newServer creates a new server with the given UDP connection, onMessage callback, and onError callback.
@@ -25,11 +25,11 @@ func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessag
 	s := &server{
 		udp:       udp,
 		onMessage: onMessage,
-		onSend: onSend,
+		onSend:    onSend,
 		onError:   onError,
 		config:    config,
 		configID:  configID,
-		debug: debug,
+		debug:     debug,
 	}
 	return s
 }
@@ -109,4 +109,14 @@ func (s *server) getOutgoingConnection() *udpserver.UDP {
 
 func (s *server) getConfig() *networkConfig {
 	return s.config
+}
+
+func letterCounter(letter string, text string) int {
+	count := 0
+	for _, char := range text {
+		if string(char) == letter {
+			count++
+		}
+	}
+	return count
 }
