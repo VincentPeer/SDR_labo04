@@ -53,6 +53,16 @@ func NewClient(portSend int, portReceive int, id string, networkConfigPath strin
 
 }
 
+func (c *Client) SendToAll(message string) error {
+	for i ,_ := range c.config.Servers {
+		err := c.Send(message, i)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Send sends a message to a server. It returns an error if any occurred.
 func (c *Client) Send(message string, serverID int) error {
 	return sendToServer(c.udpConnSend, c.config, typeSend, message, serverID)
