@@ -21,14 +21,14 @@ type server struct {
 	lettersCounted int
 	myLetter       string
 	neighborsChan  map[string]chan map[string]int
-	parentId       string
+	parentId       int
 	message        string
 	result         map[string]int
 }
 
 // newServer creates a new server with the given UDP connection, onMessage callback, and onError callback.
 func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessage func(Message), onSend func(Message),
-	onError func(error), debug bool, lettersCounted int, myLetter string, parentId string) *server {
+	onError func(error), debug bool, lettersCounted int, myLetter string, parentId int) *server {
 	s := &server{
 		udp:            udp,
 		onMessage:      onMessage,
@@ -117,7 +117,16 @@ func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress
 			}
 		}
 	case typeEcho:
-		// add
+		// send echo to the parent with the result
+		err := sendToServer(s.udp, s.config, s.message, s.result, s.parentId)
+		if err == nil {
+			s.onSend(Message{
+				Type:     typeEcho,
+				Sender:   s.config.Servers[s.configID].ID,
+				Receiver: s.config.Servers[s.parentId].ID,
+				Data:     s.message,
+			})
+		}
 	}
 }
 
