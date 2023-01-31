@@ -92,13 +92,15 @@ func (s *server) sendToAll(msgType string, msgContent interface{}) {
 
 	for i := 0; i < len(s.config.Servers); i++ {
 		if s.config.Servers[i].ID != s.udp.ID {
-			s.onSend(Message{
-				Type:     msgType,
-				Sender:   s.config.Servers[s.configID].ID,
-				Receiver: s.config.Servers[i].ID,
-				Data:     msgContent,
-			})
-			sendToServer(s.udp, s.config, msgType, msgContent, i)
+			err := sendToServer(s.udp, s.config, msgType, msgContent, i)
+			if err == nil {
+				s.onSend(Message{
+					Type:     msgType,
+					Sender:   s.config.Servers[s.configID].ID,
+					Receiver: s.config.Servers[i].ID,
+					Data:     msgContent,
+				})
+			}	
 		}
 	}
 }

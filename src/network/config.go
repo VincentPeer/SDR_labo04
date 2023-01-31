@@ -13,6 +13,8 @@ type config struct {
 	Port int `json:"port"`
 	// The address to listen on
 	Address string `json:"address"`
+	// The neighbors of the server
+	Neighbors []string `json:"neighbors"`
 }
 
 // networkConfig is the representation of the network config file

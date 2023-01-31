@@ -25,9 +25,17 @@ func sendToServer(conn *udpserver.UDP, config *networkConfig, msgType string, me
 	if serverID < 0 || serverID > config.MaxServers {
 		return fmt.Errorf("invalid server id, must be between 0 and %d specified in config", config.MaxServers)
 	}
-
 	// Get configuration for specified server
 	configServer := config.Servers[serverID]
+
+	// Check if the servers are neighbours
+	for i, neighbour := range configServer.Neighbors {
+		if neighbour == conn.ID {
+			break
+		} else if i == len(configServer.Neighbors)-1 {
+			return fmt.Errorf("server %s is not a neighbour of server %d", conn.ID, serverID)
+		}
+	}
 
 	remoteCon := udpserver.NewUDP(configServer.Address, configServer.Port, configServer.ID)
 
