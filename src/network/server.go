@@ -3,6 +3,7 @@ package network
 import (
 	"SDR_labo04/src/udpserver"
 	"fmt"
+	"reflect"
 )
 
 const (
@@ -23,9 +24,10 @@ type server struct {
 	nbNeighbors    int
 	neighborsChan  map[string]chan map[string]int
 	parentId       string
-	message        string
 	result         map[string]int
 	started        bool
+	probeToReceive int
+	client *udpserver.UDPAddress
 }
 
 // newServer creates a new server with the given UDP connection, onMessage callback, and onError callback.
@@ -46,6 +48,8 @@ func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessag
 		neighborsChan:  make(map[string]chan map[string]int),
 		result:         make(map[string]int),
 		started:        false,
+		probeToReceive: nbNeighbors,
+		client:  	 nil,
 	}
 
 	for i := 0; i < len(config.Servers[configID].Neighbors); i++ {
@@ -107,7 +111,8 @@ func (s *server) Stop() {
 func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress) {
 	fmt.Println(message)
 	switch message.Type {
-	case typeSend: // first server to get the message
+	case typeSendAck: // first server to get the message
+		s.client = remoteAddr
 		text := message.Data.(string)
 		s.lettersCounted = letterCounter(s.myLetter, text)
 		s.result[s.myLetter] = s.lettersCounted
@@ -116,31 +121,71 @@ func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress
 		s.sendToAll(typeProbe, text)
 		s.nbNeighbors++
 	case typeProbe:
+		s.probeToReceive--
+		probe := message.Data.(string)
+		s.lettersCounted = letterCounter(probe, s.myLetter)
+		s.result[s.myLetter] = s.lettersCounted
+		if s.probeToReceive == 0 {
+			for i := 0; i < s.config.MaxServers; i++ {
+				if s.config.Servers[i].ID == message.Sender {
+					err := sendToServer(s.udp, s.config, typeEcho, s.result, i)
+					if err != nil {
+						s.onError(err)
+					}
+					break
+				}
+			}
+		} else {
 		if !s.started {
+			s.parentId = message.Sender
 			s.started = true
 			// send Probe to all neighbors except to the parent
-			probe := message.Data.(string)
-			s.parentId = message.Sender
-			s.lettersCounted = letterCounter(s.myLetter, probe)
 			for i := 0; i < len(s.config.Servers[s.configID].Neighbors); i++ {
 				fmt.Println("Neighbor ", s.config.Servers[s.configID].Neighbors[i])
 				fmt.Println("parent", s.parentId)
 				if s.config.Servers[s.configID].Neighbors[i] != s.parentId {
 					fmt.Println("Sending probe to ", s.config.Servers[s.configID].Neighbors[i])
-					sendToServer(s.udp, s.config, typeProbe, probe, i)
+					for j := 0; j < s.config.MaxServers; j++ {
+						if s.config.Servers[j].ID == s.config.Servers[s.configID].Neighbors[i] {
+							err := sendToServer(s.udp, s.config, typeProbe, probe, j)
+							if err != nil {
+								println("Error sending probe to ", s.config.Servers[s.configID].Neighbors[i])
+							}
+							break
+						}
+					}
+				}
+			}
+		} else {
+			for i := 0; i < s.config.MaxServers; i++ {
+				if s.config.Servers[i].ID == s.parentId {
+					err := sendToServer(s.udp, s.config, typeEcho, s.result, i)
+					if err != nil {
+						s.onError(err)
+					}
+					break
 				}
 			}
 		}
+	}
 	case typeEcho:
-		result := message.Data.(map[string]int)
+		result := message.Data.(map[string]interface{})
 		result[s.myLetter] = s.lettersCounted
+		for key, value := range result {
+			fmt.Println("key:", key, "value:", value)
+			if reflect.TypeOf(value).Kind() == reflect.Float64 {
+				s.result[key] = int(value.(float64))
+			} else {
+				s.result[key] = value.(int)
+			}
+		}
 		// send echo to the parent with the result, if we are not the root
 		s.nbNeighbors--
 		if s.nbNeighbors == 1 {
 			if s.parentId != "-1" {
 				for i := 0; i < s.config.MaxServers; i++ {
 					if s.config.Servers[i].ID == s.parentId {
-						err := sendToServer(s.udp, s.config, typeEcho, result, i)
+						err := sendToServer(s.udp, s.config, typeEcho, s.result, i)
 						if err != nil {
 							s.onError(err)
 						}
@@ -149,7 +194,18 @@ func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress
 				}
 			} else {
 				// if we are the root, we print the result
-				fmt.Println(s.result)
+				fmt.Println("Result: ", s.result)
+				msg, err := StringifyMessage(
+					Message{
+						Type:     typeAck,
+						Sender:   s.config.Servers[s.configID].ID,
+						Receiver: "client",
+						Data:     s.result,
+					})
+				if err != nil {
+					s.onError(err)
+				}
+				s.udp.Send(s.client, msg)
 			}
 		}
 	}

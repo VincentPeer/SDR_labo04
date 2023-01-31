@@ -68,21 +68,12 @@ func (c *Client) Send(message string, serverID int) error {
 	return sendToServer(c.udpConnSend, c.config, typeSend, message, serverID)
 }
 
-func (c *Client) Result(serverID int) (Message, error) {
-	return c.sendWithAckSync(typeResult, "", serverID)
-}
-
 // SendWithAckSync sends a message to a server and waits for an acknowledgement from the server, with a specified timeout.
 // It returns the received acknowledgement message and an error if any occurred.
 func (c *Client) SendWithAckSync(message string, serverID int) (Message, error) {
 	return c.sendWithAckSync(typeSendAck, message, serverID)
 }
 
-// Stop sends a message to a server requesting to stop. It waits for an acknowledgement from the server,
-// with a specified timeout. It returns the received acknowledgement message and an error if any occurred.
-func (c *Client) Stop(serverID int) (Message, error) {
-	return c.sendWithAckSync(typeStop, "", serverID)
-}
 
 // sendWithAckSync sends a message to a server and waits for an acknowledgement from the server,
 // with a specified timeout. It returns the received acknowledgement message and an error if any occurred.

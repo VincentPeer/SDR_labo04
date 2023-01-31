@@ -18,11 +18,6 @@ const (
 	typeProbe = "Probe"
 	// typeEcho
 	typeEcho     = "echo"
-	typeAnnounce = "announce"
-	// typeResult is the type of a result message
-	typeResult = "result"
-	// typeStop is the type of a stop message
-	typeStop = "stop"
 )
 
 // Message est la structure de données utilisée pour représenter
