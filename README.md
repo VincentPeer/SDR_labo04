@@ -12,9 +12,7 @@
     - [Format du fichier de configuration ](#format-du-fichier-de-configuration-)
       - [Exemple de fichier de configuration:](#exemple-de-fichier-de-configuration)
   - [Application cliente  👥](#application-cliente--)
-  - [Tests et mode debug  🔧](#tests-et-mode-debug--)
-    - [Tests automatisés ](#tests-automatisés-)
-    - [Mode debug ](#mode-debug-)
+  - [Tests 🔧](#tests-)
 
 ## Introduction 
 Ce laboratoire a pour but d'implémenter l'algorithme ondulatoire et l'algorithme sondes et echos en go. Les communications client-serveur sont réalisées avec le protocole UDP. 
@@ -123,77 +121,32 @@ La configuration réseau est définie dans un fichier de configuration au format
 Le client propose plusieurs commandes que l'on peut soumettre sur n’importe quel
 serveur dont on précise le numéro N en paramètre.
 Voici les commandes disponibles à ajouter avec l'argument -command :
-* _send_ est envoyé à tout les serveurs du réseau, il permet de compter le nombre de lettre dans le message envoyé.
-  * Le message est précisé avec l'argument -word suivi du message à envoyer. Par défaut, le message est "Barack Obama".
+* _send_ est envoyé à tout les serveurs du réseau, il permet de compter le nombre de lettre dans le message envoyé et va lancer l'algorithme.
+  * Le message est précisé avec l'argument -word suivi du message à envoyer. Par défaut, le message est "BarackObama".
+* _result_ est envoyé à un serveur spécifique, il permet de récupérer le résultat du comptage de lettre.
 
 Exemple de commande pour demander au serveur 2 qui est le processus élu :
 ```
 go run . -server 2  -command leader
 ```
 
+## Tests<a name="tests"/> 🔧
 
-## Tests et mode debug <a name="tests"/> 🔧
-### Tests automatisés <a name="automated-test"/> 
-Pour lancer les tests automatisés, il faut lancer tous les serveurs :
-* ``` go run . -id 0 ```
-* ``` go run . -id 1 ```
-* ``` go run . -id 2 ```
-* ``` go run . -id 3 ```  
+Déplacer les 4 terminaux serveurs dans le dossier src/main/server et le terminal client dans le dossier src/main/client.
 
-Puis, dans src/main/test, lancez ```go run .``` pour lancer les tests automatisés. 
-Le résultat devrait être le suivant :
-![](automated-tests.jpg)
-### Mode debug <a name="debug-mode"/>
-Les serveurs peuvent être lancés en mode debug, ce qui aura pour effet de ralentir le
-traitement des messages de 1 seconde. Pour lancer un serveur en mode debug, ajoutez
-l'argument -debug à la commande de lancement du serveur.
-Pour tester le cas où plusieurs élections sont demandées simultanément depuis plusieurs
-clients, on peut par exemple procéder comme suit :
-* Lancer 4 serveurs en mode debug
-  * ``` go run . -id 0 -debug ```
-  * ``` go run . -id 1 -debug ```
-  * ``` go run . -id 2 -debug ```
-  * ``` go run . -id 3 -debug ```
-* Ajouter des charges sur les serveurs 0 et 2 :
-  * ``` go run . -server 0 -command charge 10 ```
-  * ``` go run . -server 2 -command charge 5 ```
-* Lancer 2 clients qui demandent deux élections en envoyant rapidment les 2 requêtes :
-  * ```go run . -server 0  -command elect```
-  * ```go run . -server 2  -command elect```    
-  
-On peut observer les échanges entre les serveurs et constater qu'ils se mettent en 
-accord sur le même serveur élu.  
-On peut également varier les tests, par exemple en utilisant la commande qui stoppe un serveur
-depuis un client avec la commande ```-command stop```, ou augmenter la charge d'un serveur
-  avec ```-command charge [amount]``` et observer les échanges entre serveur ainsi que
-le résultat du serveur élu. On peut aussi lancer un nouveau serveur pendant l'élection.
+Lancer les serveurs avec la commande suivante :
+```
+go run . -id i
+```
+où i est l'id du serveur (0, 1, 2 ou 3).
 
-Par exemple :
-* Lancer 3 serveurs en mode debug
-  * ``` go run . -id 0 -debug ```
-  * ``` go run . -id 1 -debug ```
-  * ``` go run . -id 2 -debug ```
-* Ajouter des charges sur les serveurs 0 et 2 :
-  * ``` go run . -server 0 -command charge 10 ```
-  * ``` go run . -server 2 -command charge 5 ```
-* Lancer 1 client qui demande un election
-  * ```go run . -server 1  -command elect```
-* Lancer un nouveau serveur
-  * ``` go run . -id 3 -debug ```
-* Redemander une élection
-  * ```go run . -server 0  -command elect```
+Lancer le client avec la commande suivante :
+```
+go run . -command send -word "VotreMot"
+```
 
-
-Ou bien :
-* Lancer 4 serveurs en mode debug
-  * ``` go run . -id 0 -debug ```
-  * ``` go run . -id 1 -debug ```
-  * ``` go run . -id 2 -debug ```
-  * ``` go run . -id 3 -debug ```	
-* Ajouter des charges sur les serveurs 0 et 2 :
-  * ``` go run . -server 0 -command charge 10 ```
-  * ``` go run . -server 2 -command charge 5 ```
-* Lancer une élection
-  * ```go run . -server 1  -command elect```
-* Rapidement tuer le serveur élu
-  * ```go run . -server 0  -command stop```
+Les serveurs vont se partager le travail de comptage de lettre et le client peut demander le résultat du comptage à n'importe quel serveur avec la commande suivante :
+```
+go run . -command result
+```
+Ici le client demande le résultat au serveur 1.
