@@ -105,6 +105,7 @@ func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress
 	switch message.Type {
 		case typeSend:
 			word := message.Data.(string)
+			s.result = make(map[string]int)
 			s.lettersCounted = letterCounter(s.letter, word)
 			s.result[s.letter] = s.lettersCounted
 			go s.waveAlgorithm()
