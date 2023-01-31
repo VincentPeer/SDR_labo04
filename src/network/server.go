@@ -20,15 +20,16 @@ type server struct {
 	debug          bool           // debug is true if debug messages should be printed and messages slow down
 	lettersCounted int
 	myLetter       string
+	nbNeighbors    int
 	neighborsChan  map[string]chan map[string]int
-	parentId       int
+	parentId       string
 	message        string
 	result         map[string]int
 }
 
 // newServer creates a new server with the given UDP connection, onMessage callback, and onError callback.
 func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessage func(Message), onSend func(Message),
-	onError func(error), debug bool, lettersCounted int, myLetter string, parentId int) *server {
+	onError func(error), debug bool, lettersCounted int, myLetter string, nbNeighbors int, parentId string) *server {
 	s := &server{
 		udp:            udp,
 		onMessage:      onMessage,
@@ -39,6 +40,7 @@ func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessag
 		debug:          debug,
 		lettersCounted: lettersCounted,
 		myLetter:       myLetter,
+		nbNeighbors:    nbNeighbors,
 		parentId:       parentId,
 		neighborsChan:  make(map[string]chan map[string]int),
 		result:         make(map[string]int),
@@ -73,7 +75,7 @@ func StartServer(configFile string, serverID int, onMessage func(Message), onSen
 	// Create new UDP server with server configuration
 	udp := udpserver.NewUDP(configServer.Address, configServer.Port, configServer.ID)
 
-	s := newServer(config, serverID, udp, onMessage, onSend, onError, debug, 0, configServer.Letter, -1)
+	s := newServer(config, serverID, udp, onMessage, onSend, onError, debug, 0, configServer.Letter, len(configServer.Neighbors), "-1")
 
 	// Sends wazzup messages to all servers to inform them that this server is alive
 	s.sendToAll(typeWazzup, "")
@@ -102,30 +104,56 @@ func (s *server) Stop() {
 // handleMessage processes an incoming message and sends an acknowledgement message if appropriate.
 func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress) {
 	switch message.Type {
-	case typeSend: // init
+	case typeSend: // first server to get the message
 		text := message.Data.(string)
 		s.lettersCounted = letterCounter(s.myLetter, text)
 		s.result[s.myLetter] = s.lettersCounted
-		go s.diffusionAlgorithm()
 
+		// send probe to all neighbors
+		s.sendToAll(typeProbe, probe{s.config.Servers[s.configID].ID, s.message})
+		s.nbNeighbors++
 	case typeProbe:
 		// send probe to all neighbors except to the parent
 		probe := message.Data.(probe)
-		for i := 0; i < len(s.config.Servers[s.configID].Neighbors); i++ {
-			if s.config.Servers[s.configID].Neighbors[i] != probe.id {
-				s.sendToAll(typeProbe, probe)
+		s.parentId = probe.id
+		s.lettersCounted = letterCounter(s.myLetter, probe.message)
+		for i := 0; i < s.nbNeighbors; i++ {
+			if s.config.Servers[s.configID].Neighbors[i] != s.parentId {
+				addr := udpserver.NewUDPConn(s.config.Servers[i].Address, s.config.Servers[i].Port)
+				str, err := StringifyMessage(Message{
+					Type:     typeProbe,
+					Sender:   s.config.Servers[s.configID].ID,
+					Receiver: s.config.Servers[i].ID,
+					Data:     probe.message,
+				})
+				if err != nil {
+					s.onError(err)
+					return
+				}
+				s.udp.Send(&addr, str)
 			}
 		}
+
 	case typeEcho:
-		// send echo to the parent with the result
-		err := sendToServer(s.udp, s.config, s.message, s.result, s.parentId)
-		if err == nil {
-			s.onSend(Message{
-				Type:     typeEcho,
-				Sender:   s.config.Servers[s.configID].ID,
-				Receiver: s.config.Servers[s.parentId].ID,
-				Data:     s.message,
-			})
+		result := message.Data.(map[string]int)
+		result[s.myLetter] = s.lettersCounted
+		// send echo to the parent with the result, if we are not the root
+		s.nbNeighbors--
+		if s.nbNeighbors == 1 {
+			if s.parentId != "-1" {
+				for i := 0; i < s.config.MaxServers; i++ {
+					if s.config.Servers[i].ID == s.parentId {
+						err := sendToServer(s.udp, s.config, typeEcho, result, i)
+						if err != nil {
+							s.onError(err)
+						}
+						break
+					}
+				}
+			} else {
+				// if we are the root, we print the result
+				fmt.Println(s.result)
+			}
 		}
 	}
 }
@@ -156,9 +184,7 @@ func (s *server) getConfig() *networkConfig {
 }
 
 func (s *server) diffusionAlgorithm() {
-	for {
-		s.sendToAll(typeProbe, probe{s.config.Servers[s.configID].ID, s.message})
-	}
+
 }
 
 type probe struct {

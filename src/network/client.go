@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	address             = "127.0.0.1"
+	address = "127.0.0.1"
 )
 
 type Client struct {
@@ -53,9 +53,23 @@ func NewClient(portSend int, portReceive int, id string, networkConfigPath strin
 
 }
 
+func (c *Client) SendToAll(message string) error {
+	for i, _ := range c.config.Servers {
+		err := c.Send(message, i)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Send sends a message to a server. It returns an error if any occurred.
 func (c *Client) Send(message string, serverID int) error {
 	return sendToServer(c.udpConnSend, c.config, typeSend, message, serverID)
+}
+
+func (c *Client) Result(serverID int) (Message, error) {
+	return c.sendWithAckSync(typeResult, "", serverID)
 }
 
 // SendWithAckSync sends a message to a server and waits for an acknowledgement from the server, with a specified timeout.
@@ -75,7 +89,7 @@ func (c *Client) Stop(serverID int) (Message, error) {
 func (c *Client) sendWithAckSync(msgType string, message string, serverID int) (Message, error) {
 	ackChannel := make(chan Message)
 	errChannel := make(chan error)
-	
+
 	relayToErrorChannel := func(err error) {
 		errChannel <- err
 	}
@@ -114,7 +128,6 @@ func (c *Client) listen(onErr func(error)) {
 			}
 		}, onErr)
 }
-
 
 func (c *Client) getAckChannel(remoteAddr *udpserver.UDPAddress) chan Message {
 	if channel, ok := c.ackChannels[*remoteAddr]; ok {
