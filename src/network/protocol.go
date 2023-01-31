@@ -12,22 +12,12 @@ const (
 	typeSendAck = "sendAck"
 	// typeAck is the type of an ack message
 	typeAck = "ack"
-	// typeCharge is the type of a charge message
-	typeCharge = "charge"
-	// typeStop is the type of a stop message
-	typeStop = "stop"
-	// typeElect is the type of an elect message
-	typeElect = "elect"
-	// typeAnnounce is the type of an announce message
-	typeAnnounce = "announce"
-	// typeResult is the type of a result message
-	typeResult = "result"
-	// typeFinish is the type of a finish message
-	typeFinish = "finish"
-	// typeAskLeader is the type of an ask leader message
-	typeAskLeader = "askLeader"
 	// typeWazzup is the type of a wazzup message
 	typeWazzup = "wazzup"
+	// typeProbe
+	typeProbe = "probe"
+	// typeEcho
+	typeEcho = "echo"
 )
 
 // Message est la structure de données utilisée pour représenter

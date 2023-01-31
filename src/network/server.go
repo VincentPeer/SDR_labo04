@@ -11,25 +11,41 @@ const (
 
 // server represents a UDP server that listens for incoming messages and processes them.
 type server struct {
-	udp       *udpserver.UDP // udp is a pointer to the UDP connection of the server.
-	onMessage func(Message)  // onMessage is a callback function that is called when a message is received.
-	onSend    func(Message)  // onSend is a callback function that is called when a message is sent.
-	onError   func(error)    // onError is a callback function that is called when an error occurs.
-	config    *networkConfig // config is a pointer to the network configuration.
-	configID  int            // configID is the ID of the server in the network configuration.
-	debug     bool           // debug is true if debug messages should be printed and messages slow down
+	udp            *udpserver.UDP // udp is a pointer to the UDP connection of the server.
+	onMessage      func(Message)  // onMessage is a callback function that is called when a message is received.
+	onSend         func(Message)  // onSend is a callback function that is called when a message is sent.
+	onError        func(error)    // onError is a callback function that is called when an error occurs.
+	config         *networkConfig // config is a pointer to the network configuration.
+	configID       int            // configID is the ID of the server in the network configuration.
+	debug          bool           // debug is true if debug messages should be printed and messages slow down
+	lettersCounted int
+	myLetter       string
+	neighborsChan  map[string]chan map[string]int
+	parentId       string
+	message        string
+	result         map[string]int
 }
 
 // newServer creates a new server with the given UDP connection, onMessage callback, and onError callback.
-func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessage func(Message), onSend func(Message), onError func(error), debug bool) *server {
+func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessage func(Message), onSend func(Message),
+	onError func(error), debug bool, lettersCounted int, myLetter string, parentId string) *server {
 	s := &server{
-		udp:       udp,
-		onMessage: onMessage,
-		onSend:    onSend,
-		onError:   onError,
-		config:    config,
-		configID:  configID,
-		debug:     debug,
+		udp:            udp,
+		onMessage:      onMessage,
+		onSend:         onSend,
+		onError:        onError,
+		config:         config,
+		configID:       configID,
+		debug:          debug,
+		lettersCounted: lettersCounted,
+		myLetter:       myLetter,
+		parentId:       parentId,
+		neighborsChan:  make(map[string]chan map[string]int),
+		result:         make(map[string]int),
+	}
+
+	for i := 0; i < len(config.Servers[configID].Neighbors); i++ {
+		s.neighborsChan[config.Servers[configID].Neighbors[i]] = make(chan map[string]int)
 	}
 	return s
 }
@@ -57,7 +73,7 @@ func StartServer(configFile string, serverID int, onMessage func(Message), onSen
 	// Create new UDP server with server configuration
 	udp := udpserver.NewUDP(configServer.Address, configServer.Port, configServer.ID)
 
-	s := newServer(config, serverID, udp, onMessage, onSend, onError, debug)
+	s := newServer(config, serverID, udp, onMessage, onSend, onError, debug, 0, configServer.Letter, -1)
 
 	// Sends wazzup messages to all servers to inform them that this server is alive
 	s.sendToAll(typeWazzup, "")
@@ -85,7 +101,24 @@ func (s *server) Stop() {
 
 // handleMessage processes an incoming message and sends an acknowledgement message if appropriate.
 func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress) {
-	// Faire des dingueries
+	switch message.Type {
+	case typeSend: // init
+		text := message.Data.(string)
+		s.lettersCounted = letterCounter(s.myLetter, text)
+		s.result[s.myLetter] = s.lettersCounted
+		go s.diffusionAlgorithm()
+
+	case typeProbe:
+		// send probe to all neighbors except to the parent
+		probe := message.Data.(probe)
+		for i := 0; i < len(s.config.Servers[s.configID].Neighbors); i++ {
+			if s.config.Servers[s.configID].Neighbors[i] != probe.id {
+				s.sendToAll(typeProbe, probe)
+			}
+		}
+	case typeEcho:
+		// add
+	}
 }
 
 func (s *server) sendToAll(msgType string, msgContent interface{}) {
@@ -111,4 +144,25 @@ func (s *server) getOutgoingConnection() *udpserver.UDP {
 
 func (s *server) getConfig() *networkConfig {
 	return s.config
+}
+
+func (s *server) diffusionAlgorithm() {
+	for {
+		s.sendToAll(typeProbe, probe{s.config.Servers[s.configID].ID, s.message})
+	}
+}
+
+type probe struct {
+	id      string
+	message string
+}
+
+func letterCounter(text string, letter string) int {
+	count := 0
+	for _, char := range text {
+		if string(char) == letter {
+			count++
+		}
+	}
+	return count
 }
