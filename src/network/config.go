@@ -15,6 +15,8 @@ type config struct {
 	Address string `json:"address"`
 	// The neighbors of the server
 	Neighbors []string `json:"neighbors"`
+	// The letter that the server is responsible for
+	Letter string `json:"letter"`
 }
 
 // networkConfig is the representation of the network config file
