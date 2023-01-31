@@ -1,4 +1,4 @@
-# SDR_L4
+# SDR_Labo4 Partie 1 : Algorithme ondulatoire
 ## Table des matières
 - [SDR\_L4](#sdr_l4)
   - [Table des matières](#table-des-matières)
@@ -22,17 +22,7 @@ La concurrence d'accès aux variables est gérée avec des goroutines et des cha
 * Nelson Jeanrenaud
 * Vincent Peer
 
-## Guide d'utilisation <a name="utilisation" /> 📚
-### Installation des ressources <a name="installation"/> 💾
-Commencez par cloner notre repository dans le dossier de votre choix, la commande
-git est la suivante :
-```
-git clone https://github.com/VincentPeer/SDR_labo04.git
-```
-Changer de branche pour passer à l'algorithme ondulatoire :
-```
-git checkout partie1
-```
+
 
 ### Lancement serveur
 Le lancement d'un serveur requiert l'id du serveur à lancer et le chemin qui mène
