@@ -100,7 +100,7 @@ func (s *server) sendToAll(msgType string, msgContent interface{}) {
 					Receiver: s.config.Servers[i].ID,
 					Data:     msgContent,
 				})
-			}	
+			}
 		}
 	}
 }
@@ -111,14 +111,4 @@ func (s *server) getOutgoingConnection() *udpserver.UDP {
 
 func (s *server) getConfig() *networkConfig {
 	return s.config
-}
-
-func letterCounter(letter string, text string) int {
-	count := 0
-	for _, char := range text {
-		if string(char) == letter {
-			count++
-		}
-	}
-	return count
 }

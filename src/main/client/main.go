@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	id                 = "client 1"
-	sendCommand        = "send"
+	id          = "client_0"
+	sendCommand = "send"
 )
 
 var (

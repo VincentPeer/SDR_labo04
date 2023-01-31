@@ -4,28 +4,28 @@
             "id" : "server_0",
             "port" : 8080,
             "address" : "127.0.0.1",
-            "neighbors" : ["server_1", "server_2", "server_3"],
+            "neighbors" : ["server_1", "server_2", "server_3", "client_0"],
             "letter" : "B"
         },
         {
             "id" : "server_1",
             "port" : 8081,
             "address" : "127.0.0.1",
-            "neighbors" : ["server_0", "server_2"],
+            "neighbors" : ["server_0", "server_2", "client_0"],
             "letter" : "I"
         },
         {
             "id" : "server_2",
             "port" : 8082,
             "address" : "127.0.0.1",
-            "neighbors" : ["server_0", "server_1"],
+            "neighbors" : ["server_0", "server_1", "client_0"],
             "letter" : "T"
         },
         {
             "id" : "server_3",
             "port" : 8083,
             "address" : "127.0.0.1",
-            "neighbors" : ["server_0"],
+            "neighbors" : ["server_0", "client_0"],
             "letter" : "E"
         }
     ],
