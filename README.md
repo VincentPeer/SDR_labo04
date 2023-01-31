@@ -16,8 +16,8 @@
 
 ## Introduction
 Ce laboratoire a pour but d'implémenter l'algorithme ondulatoire et l'algorithme sondes et echos en go. Les communications client-serveur sont réalisées avec le protocole UDP.
-La concurrence d'accès aux variables est gérée avec des goroutines et des channels. Les deux parties ont été séparées sur deux branches différentes, afin de faciliter leur utilisation.
-Nous allons préciser dans le guide d'utilisation commenet gérer ces deux parties. Les deux branches ont été mises en place de façon similaire, il y a donc beaucoup de point communs et
+La concurrence d'accès aux variables est gérée avec des goroutines et des channels. Les deux parties ont été séparées sur deux branches différentes afin de faciliter leur utilisation.
+Nous allons préciser dans le guide d'utilisation comment gérer ces deux parties. Les deux branches ont été mises en place de façon similaire, il y a donc beaucoup de point communs et
 les commandes pour lancer les serveurs/clients sont les mêmes.
 
 ### Auteurs <a name="auteurs"/>🧍️‍♂️🧍‍♂
