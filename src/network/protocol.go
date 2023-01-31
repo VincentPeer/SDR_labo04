@@ -28,6 +28,7 @@ const (
 	typeAskLeader = "askLeader"
 	// typeWazzup is the type of a wazzup message
 	typeWazzup = "wazzup"
+	typeWave = "wave"
 )
 
 // Message est la structure de données utilisée pour représenter

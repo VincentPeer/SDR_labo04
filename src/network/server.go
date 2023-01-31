@@ -18,10 +18,15 @@ type server struct {
 	config    *networkConfig // config is a pointer to the network configuration.
 	configID  int            // configID is the ID of the server in the network configuration.
 	debug     bool           // debug is true if debug messages should be printed and messages slow down
+	lettersCounted int 	  // lettersCounted is the number of letters counted by the server
+	letter string 		  // letter is the letter that the server is counting
+	activesNeighbours map[string]bool // activesNeighbours is a map of the active neighbours of the server
+	neighborsChan map[string]chan WaveMessage
+	result map[string]int
 }
 
 // newServer creates a new server with the given UDP connection, onMessage callback, and onError callback.
-func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessage func(Message), onSend func(Message), onError func(error), debug bool) *server {
+func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessage func(Message), onSend func(Message), onError func(error), debug bool, letter string) *server {
 	s := &server{
 		udp:       udp,
 		onMessage: onMessage,
@@ -30,6 +35,16 @@ func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessag
 		config:    config,
 		configID:  configID,
 		debug:     debug,
+		lettersCounted: 0,
+		letter: letter,
+		activesNeighbours: make(map[string]bool),
+		neighborsChan: make(map[string]chan WaveMessage),
+		result: make(map[string]int),
+	}
+
+	for i := 0; i < len(config.Servers[configID].Neighbors); i++ {
+		s.neighborsChan[config.Servers[configID].Neighbors[i]] = make(chan WaveMessage)
+		s.activesNeighbours[config.Servers[configID].Neighbors[i]] = true
 	}
 	return s
 }
@@ -57,7 +72,7 @@ func StartServer(configFile string, serverID int, onMessage func(Message), onSen
 	// Create new UDP server with server configuration
 	udp := udpserver.NewUDP(configServer.Address, configServer.Port, configServer.ID)
 
-	s := newServer(config, serverID, udp, onMessage, onSend, onError, debug)
+	s := newServer(config, serverID, udp, onMessage, onSend, onError, debug, configServer.Letter)
 
 	// Sends wazzup messages to all servers to inform them that this server is alive
 	s.sendToAll(typeWazzup, "")
@@ -86,6 +101,31 @@ func (s *server) Stop() {
 // handleMessage processes an incoming message and sends an acknowledgement message if appropriate.
 func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress) {
 	// Faire des dingueries
+
+	switch message.Type {
+		case typeSend:
+			word := message.Data.(string)
+			s.lettersCounted = letterCounter(s.letter, word)
+			s.result[s.letter] = s.lettersCounted
+			go s.waveAlgorithm()
+		case typeWave:
+			waveMessage := message.Data.(map[string]interface{})
+			fmt.Println("Received wave message ", waveMessage)
+			//s.neighborsChan[message.Sender] <- waveMessage
+		case typeResult:
+			resultMessage, err := StringifyMessage(
+				Message{
+					Type:     typeAck,
+					Sender:   s.config.Servers[s.configID].ID,
+					Receiver: message.Sender,
+					Data:     s.result,
+				})
+				if err != nil {
+					s.onError(err)
+					return
+				}
+				s.udp.Send(remoteAddr, resultMessage)
+		}
 }
 
 func (s *server) sendToAll(msgType string, msgContent interface{}) {
@@ -101,6 +141,50 @@ func (s *server) sendToAll(msgType string, msgContent interface{}) {
 					Data:     msgContent,
 				})
 			}	
+		}
+	}
+}
+
+type WaveMessage struct {
+	Result map[string]int
+	Server_id string
+	Active bool
+}
+
+func (s *server) waveAlgorithm() {
+	for {
+		s.sendToAll(typeWave, WaveMessage{
+			Result: s.result,
+			Server_id: s.config.Servers[s.configID].ID,
+			Active: true,
+		})
+		for k, a := range s.activesNeighbours {
+			if a {
+				msg := <- s.neighborsChan[k]
+				s.activesNeighbours[k] = msg.Active
+				
+				for key, value := range msg.Result {
+					if _, ok := s.result[key]; !ok {
+						s.result[key] = value
+					} else if s.result[key] < value {
+						s.result[key] = value
+					}
+				}
+			}
+		}
+		if len(s.result) == len(s.config.Servers) {
+			break
+		}
+	}
+	s.sendToAll(typeWave, WaveMessage{
+		Result: s.result,
+		Server_id: s.config.Servers[s.configID].ID,
+		Active: false,
+	})
+	for k, a := range s.activesNeighbours {
+		if a {
+			msg := <- s.neighborsChan[k]
+			s.activesNeighbours[k] = msg.Active
 		}
 	}
 }

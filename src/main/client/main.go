@@ -9,6 +9,7 @@ import (
 const (
 	id                 = "client_0"
 	sendCommand        = "send"
+	resultCommand	  = "result"
 )
 
 var (
@@ -41,10 +42,16 @@ func main() {
 
 	switch *command {
 	case sendCommand:
-		err = client.SendToAll("Hello World!")
+		err = client.SendToAll("ABCDEF")
 		if err != nil {
 			fmt.Println(err)
 		}
+	case resultCommand:
+		res, err := client.Result(3)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(res.Data)
 	default:
 		fmt.Println("Unknown command")
 	}
