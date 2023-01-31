@@ -21,7 +21,7 @@ type server struct {
 	lettersCounted int 	  // lettersCounted is the number of letters counted by the server
 	letter string 		  // letter is the letter that the server is counting
 	activesNeighbours map[string]bool // activesNeighbours is a map of the active neighbours of the server
-	neighborsChan map[string]chan WaveMessage
+	neighborsChan map[string]chan map[string]interface{}
 	result map[string]int
 }
 
@@ -38,12 +38,12 @@ func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessag
 		lettersCounted: 0,
 		letter: letter,
 		activesNeighbours: make(map[string]bool),
-		neighborsChan: make(map[string]chan WaveMessage),
+		neighborsChan: make(map[string]chan map[string]interface{}),
 		result: make(map[string]int),
 	}
 
 	for i := 0; i < len(config.Servers[configID].Neighbors); i++ {
-		s.neighborsChan[config.Servers[configID].Neighbors[i]] = make(chan WaveMessage)
+		s.neighborsChan[config.Servers[configID].Neighbors[i]] = make(chan map[string]interface{})
 		s.activesNeighbours[config.Servers[configID].Neighbors[i]] = true
 	}
 	return s
@@ -111,7 +111,7 @@ func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress
 		case typeWave:
 			waveMessage := message.Data.(map[string]interface{})
 			fmt.Println("Received wave message ", waveMessage)
-			//s.neighborsChan[message.Sender] <- waveMessage
+			s.neighborsChan[message.Sender] <- waveMessage
 		case typeResult:
 			resultMessage, err := StringifyMessage(
 				Message{
@@ -160,14 +160,15 @@ func (s *server) waveAlgorithm() {
 		})
 		for k, a := range s.activesNeighbours {
 			if a {
+				fmt.Println("Waiting for message from ", k)
 				msg := <- s.neighborsChan[k]
-				s.activesNeighbours[k] = msg.Active
+				s.activesNeighbours[k] = msg["Active"].(bool)
 				
-				for key, value := range msg.Result {
+				for key, value := range msg["Result"].(map[string]interface{}) {
 					if _, ok := s.result[key]; !ok {
-						s.result[key] = value
-					} else if s.result[key] < value {
-						s.result[key] = value
+						s.result[key] = (int)(value.(float64))
+					} else if s.result[key] < (int)(value.(float64)) {
+						s.result[key] = (int)(value.(float64))
 					}
 				}
 			}
@@ -176,6 +177,7 @@ func (s *server) waveAlgorithm() {
 			break
 		}
 	}
+	fmt.Println("I think I have the result")
 	s.sendToAll(typeWave, WaveMessage{
 		Result: s.result,
 		Server_id: s.config.Servers[s.configID].ID,
@@ -184,9 +186,10 @@ func (s *server) waveAlgorithm() {
 	for k, a := range s.activesNeighbours {
 		if a {
 			msg := <- s.neighborsChan[k]
-			s.activesNeighbours[k] = msg.Active
+			s.activesNeighbours[k] = msg["Active"].(bool)
 		}
 	}
+	fmt.Println("Finished wave algorithm")
 }
 
 func (s *server) getOutgoingConnection() *udpserver.UDP {

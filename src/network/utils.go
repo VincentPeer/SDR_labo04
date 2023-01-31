@@ -33,7 +33,11 @@ func sendToServer(conn *udpserver.UDP, config *networkConfig, msgType string, me
 		if neighbour == conn.ID {
 			break
 		} else if i == len(configServer.Neighbors)-1 {
-			return fmt.Errorf("server %s is not a neighbour of server %d", conn.ID, serverID)
+			for i := 0; i < len(config.Servers); i++ {
+				if config.Servers[i].ID == conn.ID { // Checking that we are not a client
+					return fmt.Errorf("server %s is not a neighbour of server %d", conn.ID, serverID)
+				}
+			}
 		}
 	}
 

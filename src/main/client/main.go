@@ -47,7 +47,7 @@ func main() {
 			fmt.Println(err)
 		}
 	case resultCommand:
-		res, err := client.Result(3)
+		res, err := client.Result(0)
 		if err != nil {
 			fmt.Println(err)
 		}
