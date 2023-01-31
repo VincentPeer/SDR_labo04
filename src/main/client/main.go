@@ -25,7 +25,7 @@ func init() {
 	configPath = flag.String("path", "../data/config.json", "path to the json configuration file of the network")
 	command = flag.String("command", "sendWithAck", "command to send to server (send, receive, etc)") // TODO add real commands
 	serverId = flag.Int("server", 1, "id of the server to send the command to")
-	word = flag.String("word", "ABCDEF", "word to send to server")
+	word = flag.String("word", "BarackObama", "word to send to server")
 }
 
 func usage() {

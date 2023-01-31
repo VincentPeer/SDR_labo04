@@ -105,6 +105,9 @@ func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress
 	switch message.Type {
 		case typeSend:
 			word := message.Data.(string)
+			for i := 0; i < len(s.config.Servers[s.configID].Neighbors); i++ {
+				s.activesNeighbours[s.config.Servers[s.configID].Neighbors[i]] = true
+			}
 			s.result = make(map[string]int)
 			s.lettersCounted = letterCounter(s.letter, word)
 			s.result[s.letter] = s.lettersCounted
@@ -188,8 +191,17 @@ func (s *server) waveAlgorithm() {
 		if a {
 			msg := <- s.neighborsChan[k]
 			s.activesNeighbours[k] = msg["Active"].(bool)
+			
+			for key, value := range msg["Result"].(map[string]interface{}) {
+				if _, ok := s.result[key]; !ok {
+					s.result[key] = (int)(value.(float64))
+				} else if s.result[key] < (int)(value.(float64)) {
+					s.result[key] = (int)(value.(float64))
+				}
+			}
 		}
 	}
+	s.lettersCounted = 0
 	fmt.Println("Finished wave algorithm")
 }
 
