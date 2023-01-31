@@ -15,7 +15,7 @@ const (
 	// typeWazzup is the type of a wazzup message
 	typeWazzup = "wazzup"
 	// typeProbe
-	typeProbe = "probe"
+	typeProbe = "Probe"
 	// typeEcho
 	typeEcho     = "echo"
 	typeAnnounce = "announce"

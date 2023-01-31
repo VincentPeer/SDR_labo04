@@ -25,6 +25,7 @@ type server struct {
 	parentId       string
 	message        string
 	result         map[string]int
+	started        bool
 }
 
 // newServer creates a new server with the given UDP connection, onMessage callback, and onError callback.
@@ -44,6 +45,7 @@ func newServer(config *networkConfig, configID int, udp *udpserver.UDP, onMessag
 		parentId:       parentId,
 		neighborsChan:  make(map[string]chan map[string]int),
 		result:         make(map[string]int),
+		started:        false,
 	}
 
 	for i := 0; i < len(config.Servers[configID].Neighbors); i++ {
@@ -103,37 +105,32 @@ func (s *server) Stop() {
 
 // handleMessage processes an incoming message and sends an acknowledgement message if appropriate.
 func (s *server) handleMessage(message Message, remoteAddr *udpserver.UDPAddress) {
+	fmt.Println(message)
 	switch message.Type {
 	case typeSend: // first server to get the message
 		text := message.Data.(string)
 		s.lettersCounted = letterCounter(s.myLetter, text)
 		s.result[s.myLetter] = s.lettersCounted
 
-		// send probe to all neighbors
-		s.sendToAll(typeProbe, probe{s.config.Servers[s.configID].ID, s.message})
+		// send Probe to all neighbors
+		s.sendToAll(typeProbe, text)
 		s.nbNeighbors++
 	case typeProbe:
-		// send probe to all neighbors except to the parent
-		probe := message.Data.(probe)
-		s.parentId = probe.id
-		s.lettersCounted = letterCounter(s.myLetter, probe.message)
-		for i := 0; i < s.nbNeighbors; i++ {
-			if s.config.Servers[s.configID].Neighbors[i] != s.parentId {
-				addr := udpserver.NewUDPConn(s.config.Servers[i].Address, s.config.Servers[i].Port)
-				str, err := StringifyMessage(Message{
-					Type:     typeProbe,
-					Sender:   s.config.Servers[s.configID].ID,
-					Receiver: s.config.Servers[i].ID,
-					Data:     probe.message,
-				})
-				if err != nil {
-					s.onError(err)
-					return
+		if !s.started {
+			s.started = true
+			// send Probe to all neighbors except to the parent
+			probe := message.Data.(string)
+			s.parentId = message.Sender
+			s.lettersCounted = letterCounter(s.myLetter, probe)
+			for i := 0; i < len(s.config.Servers[s.configID].Neighbors); i++ {
+				fmt.Println("Neighbor ", s.config.Servers[s.configID].Neighbors[i])
+				fmt.Println("parent", s.parentId)
+				if s.config.Servers[s.configID].Neighbors[i] != s.parentId {
+					fmt.Println("Sending probe to ", s.config.Servers[s.configID].Neighbors[i])
+					sendToServer(s.udp, s.config, typeProbe, probe, i)
 				}
-				s.udp.Send(&addr, str)
 			}
 		}
-
 	case typeEcho:
 		result := message.Data.(map[string]int)
 		result[s.myLetter] = s.lettersCounted
@@ -187,9 +184,9 @@ func (s *server) diffusionAlgorithm() {
 
 }
 
-type probe struct {
-	id      string
-	message string
+type Probe struct {
+	Id      string
+	Message string
 }
 
 func letterCounter(text string, letter string) int {
